@@ -1,0 +1,29 @@
+宠物医院信息管理系统数据库导入说明
+
+1. 登录MySQL数据库：
+   打开命令行工具，执行以下命令：
+   mysql -u root -p
+   然后输入密码：123456
+
+2. 创建并导入数据库：
+   在MySQL命令行中执行以下命令：
+   source D:\File\GraduationProject\Project\pet_hospital.sql
+
+   或者直接复制粘贴pet_hospital.sql文件中的内容到MySQL命令行中执行
+
+3. 验证数据库创建成功：
+   执行以下命令验证数据库和表是否创建成功：
+   SHOW DATABASES;
+   USE pet_hospital;
+   SHOW TABLES;
+   DESCRIBE pets;
+
+4. 验证数据是否插入成功：
+   执行以下命令查看用户表中的数据：
+   SELECT * FROM users;
+
+5. 退出MySQL：
+   EXIT;
+
+注意：如果您使用的是图形化MySQL管理工具（如Navicat、phpMyAdmin等），可以直接在工具中执行SQL脚本文件。
+注意：如果之前已经导入过数据库，请先删除原有数据库再重新导入，以确保表结构更新生效。
