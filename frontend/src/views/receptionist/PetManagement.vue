@@ -31,6 +31,7 @@
           </template>
         </el-table-column>
         <el-table-column prop="ownerName" label="主人姓名" width="120"></el-table-column>
+        <el-table-column prop="ownerUsername" label="主人用户名" width="150"></el-table-column>
         <el-table-column label="操作" width="200">
           <template #default="scope">
             <el-button size="small" @click="showEditPetDialog(scope.row)">编辑</el-button>
@@ -47,7 +48,13 @@
           <el-input v-model="petForm.name"></el-input>
         </el-form-item>
         <el-form-item label="种类" prop="species">
-          <el-input v-model="petForm.species"></el-input>
+          <el-select v-model="petForm.species" placeholder="请选择种类" style="width: 100%;">
+            <el-option label="猫" value="猫"></el-option>
+            <el-option label="狗" value="狗"></el-option>
+            <el-option label="鸟" value="鸟"></el-option>
+            <el-option label="兔子" value="兔子"></el-option>
+            <el-option label="仓鼠" value="仓鼠"></el-option>
+          </el-select>
         </el-form-item>
         <el-form-item label="品种" prop="breed">
           <el-input v-model="petForm.breed"></el-input>
@@ -62,7 +69,10 @@
           </el-select>
         </el-form-item>
         <el-form-item label="主人姓名" prop="ownerName">
-          <el-input v-model="petForm.ownerName"></el-input>
+          <el-input v-model="petForm.ownerName" disabled></el-input>
+        </el-form-item>
+        <el-form-item label="主人用户名" prop="ownerUsername">
+          <el-input v-model="petForm.ownerUsername" disabled></el-input>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -77,6 +87,7 @@
 
 <script>
 import { ElMessage, ElMessageBox } from 'element-plus';
+import api from '@/services/api';
 
 export default {
   name: 'PetManagement',
@@ -94,23 +105,21 @@ export default {
         breed: '',
         age: 0,
         gender: '',
-        ownerName: ''
+        ownerName: '',
+        ownerUsername: ''
       },
       petRules: {
         name: [
           { required: true, message: '请输入宠物名称', trigger: 'blur' }
         ],
         species: [
-          { required: true, message: '请输入宠物种类', trigger: 'blur' }
+          { required: true, message: '请选择宠物种类', trigger: 'change' }
         ],
         breed: [
           { required: true, message: '请输入宠物品种', trigger: 'blur' }
         ],
         gender: [
           { required: true, message: '请选择宠物性别', trigger: 'change' }
-        ],
-        ownerName: [
-          { required: true, message: '请输入主人姓名', trigger: 'blur' }
         ]
       }
     };
@@ -133,30 +142,12 @@ export default {
     this.loadPets();
   },
   methods: {
-    loadPets() {
+    async loadPets() {
       this.loading = true;
       try {
-        // 暂时使用模拟数据
-        this.pets = [
-          {
-            id: 1,
-            name: '小白',
-            species: '犬',
-            breed: '泰迪',
-            age: 3,
-            gender: 'MALE',
-            ownerName: '张三'
-          },
-          {
-            id: 2,
-            name: '小黑',
-            species: '猫',
-            breed: '英短',
-            age: 2,
-            gender: 'FEMALE',
-            ownerName: '李四'
-          }
-        ];
+        // 从新的接口获取用户和宠物的关联数据
+        const response = await api.get('/api/users/pets');
+        this.pets = response.data;
       } catch (error) {
         ElMessage.error('获取宠物列表失败: ' + error.message);
       } finally {
@@ -173,7 +164,8 @@ export default {
         breed: '',
         age: 0,
         gender: '',
-        ownerName: ''
+        ownerName: '',
+        ownerUsername: ''
       };
       this.dialogVisible = true;
     },
@@ -184,26 +176,24 @@ export default {
       this.dialogVisible = true;
     },
 
-    savePet() {
-      this.$refs.petFormRef.validate((valid) => {
+    async savePet() {
+      this.$refs.petFormRef.validate(async (valid) => {
         if (valid) {
-          if (this.isEdit) {
-            // 编辑宠物
-            const index = this.pets.findIndex(p => p.id === this.petForm.id);
-            if (index !== -1) {
-              this.pets.splice(index, 1, { ...this.petForm });
+          try {
+            if (this.isEdit) {
+              // 编辑宠物信息
+              await api.put(`/api/users/pets/${this.petForm.id}`, this.petForm);
               ElMessage.success('宠物信息更新成功');
+            } else {
+              // 添加宠物（需要先创建宠物，再建立用户和宠物的关联）
+              ElMessage.warning('添加宠物功能需要完善用户关联逻辑');
             }
-          } else {
-            // 添加宠物
-            const newPet = {
-              ...this.petForm,
-              id: this.pets.length + 1
-            };
-            this.pets.push(newPet);
-            ElMessage.success('宠物添加成功');
+            
+            this.dialogVisible = false;
+            this.loadPets();
+          } catch (error) {
+            ElMessage.error('保存宠物信息失败: ' + error.message);
           }
-          this.dialogVisible = false;
         }
       });
     },
@@ -213,9 +203,14 @@ export default {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning'
-      }).then(() => {
-        this.pets = this.pets.filter(pet => pet.id !== id);
-        ElMessage.success('宠物删除成功');
+      }).then(async () => {
+        try {
+          await api.delete(`/api/users/pets/${id}`);
+          ElMessage.success('宠物删除成功');
+          this.loadPets();
+        } catch (error) {
+          ElMessage.error('删除宠物失败: ' + error.message);
+        }
       }).catch(() => {
         // 用户取消删除
       });

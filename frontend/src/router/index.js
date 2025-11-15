@@ -30,6 +30,10 @@ const userRoutes = [
       {
         path: 'appointments',
         component: () => import('@/views/user/Appointments.vue')
+      },
+      {
+        path: 'make-appointment',
+        component: () => import('@/views/user/MakeAppointment.vue')
       }
     ]
   }
@@ -64,6 +68,10 @@ const receptionistRoutes = [
       {
         path: 'inventory',
         component: () => import('@/views/receptionist/InventoryManagement.vue')
+      },
+      {
+        path: 'queue',
+        component: () => import('@/views/receptionist/QueueManagement.vue')
       }
     ]
   }
@@ -82,6 +90,10 @@ const doctorRoutes = [
       {
         path: 'schedule',
         component: () => import('@/views/doctor/Schedule.vue')
+      },
+      {
+        path: 'appointments',
+        component: () => import('@/views/doctor/Appointments.vue')
       }
     ]
   }
@@ -98,8 +110,20 @@ const directorRoutes = [
         component: () => import('@/views/director/Dashboard.vue')
       },
       {
+        path: 'users',
+        component: () => import('@/views/director/UserManagement.vue')
+      },
+      {
         path: 'customers',
         component: () => import('@/views/director/CustomerManagement.vue')
+      },
+      {
+        path: 'schedules',
+        component: () => import('@/views/director/DoctorSchedule.vue')
+      },
+      {
+        path: 'inventory',
+        component: () => import('@/views/director/InventoryManagement.vue')
       }
     ]
   }

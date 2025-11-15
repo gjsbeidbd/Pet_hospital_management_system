@@ -1,5 +1,5 @@
 <template>
-  <div class="pets-container">
+  <div class="pets-page">
     <el-card class="pets-card">
       <template #header>
         <div class="card-header">
@@ -10,7 +10,7 @@
       
       <!-- 宠物列表 -->
       <el-table :data="pets" style="width: 100%" v-loading="loading">
-        <el-table-column label="头像" width="80">
+        <el-table-column label="头像" align="center">
           <template #default="scope">
             <div v-if="scope.row.avatar" class="table-avatar-container">
               <img :src="scope.row.avatar" class="table-avatar">
@@ -20,21 +20,23 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="name" label="宠物名称" width="120"></el-table-column>
-        <el-table-column prop="species" label="种类" width="100"></el-table-column>
-        <el-table-column prop="breed" label="品种" width="120"></el-table-column>
-        <el-table-column prop="age" label="年龄" width="80"></el-table-column>
-        <el-table-column prop="gender" label="性别" width="80">
+        <el-table-column prop="name" label="宠物名称" align="center"></el-table-column>
+        <el-table-column prop="species" label="种类" align="center"></el-table-column>
+        <el-table-column prop="breed" label="品种" align="center"></el-table-column>
+        <el-table-column prop="age" label="年龄" align="center"></el-table-column>
+        <el-table-column prop="gender" label="性别" align="center">
           <template #default="scope">
             <span>{{ scope.row.gender === 'MALE' ? '雄性' : scope.row.gender === 'FEMALE' ? '雌性' : '未知' }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="weight" label="体重(kg)" width="100"></el-table-column>
-        <el-table-column label="操作" width="200">
+        <el-table-column prop="weight" label="体重(kg)" align="center"></el-table-column>
+        <el-table-column label="操作" align="center">
           <template #default="scope">
-            <el-button size="small" @click="showEditForm(scope.row)">编辑</el-button>
-            <el-button size="small" type="danger" @click="deletePet(scope.row.id)">删除</el-button>
-            <el-button size="small" @click="viewDetails(scope.row)">详情</el-button>
+            <div class="operation-buttons">
+              <el-button size="small" @click="showEditForm(scope.row)">编辑</el-button>
+              <el-button size="small" type="danger" @click="deletePet(scope.row.id)">删除</el-button>
+              <el-button size="small" @click="viewDetails(scope.row)">详情</el-button>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -42,6 +44,7 @@
       <!-- 无宠物提示 -->
       <el-empty description="暂无宠物信息" v-if="pets.length === 0 && !loading"></el-empty>
     </el-card>
+    </div>
     
     <!-- 添加/编辑宠物对话框 -->
     <el-dialog :title="dialogTitle" v-model="dialogVisible" width="500px">
@@ -191,7 +194,6 @@
         </span>
       </template>
     </el-dialog>
-  </div>
 </template>
 
 <script>
@@ -236,14 +238,9 @@ export default {
       speciesOptions: [
         { label: '猫', value: '猫' },
         { label: '狗', value: '狗' },
-        { label: '兔子', value: '兔子' },
-        { label: '仓鼠', value: '仓鼠' },
-        { label: '龙猫', value: '龙猫' },
         { label: '鸟', value: '鸟' },
-        { label: '鱼', value: '鱼' },
-        { label: '龟', value: '龟' },
-        { label: '豚鼠', value: '豚鼠' },
-        { label: '刺猬', value: '刺猬' }
+        { label: '兔子', value: '兔子' },
+        { label: '仓鼠', value: '仓鼠' }
       ],
       // 品种选项
       breedMap: {
@@ -304,7 +301,9 @@ export default {
         const userId = localStorage.getItem('userId');
         if (userId) {
           const response = await api.get(`/api/users/${userId}/pets`);
-          this.pets = response.data;
+          if (response.data.success) {
+            this.pets = response.data.data;
+          }
         }
       } catch (error) {
         console.error('加载宠物信息失败:', error);
@@ -366,7 +365,7 @@ export default {
               // 添加宠物信息
               // 首先获取客户ID
               const customerResponse = await api.get(`/api/users/${userId}/customer`);
-              const customerId = customerResponse.data.id;
+              const customerId = customerResponse.data.success ? customerResponse.data.data.id : customerResponse.data.id;
               
               // 创建一个不包含avatarPreview字段的对象
               const petData = { ...this.petForm, customerId: customerId };
@@ -410,18 +409,43 @@ export default {
 </script>
 
 <style scoped>
-.pets-container {
-  padding: 20px;
+.pets-page {
+  width: 100%;
+  height: 100%;
 }
 
 .pets-card {
-  margin-bottom: 20px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.pets-card :deep(.el-card__body) {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+}
+
+.pets-card :deep(.el-table) {
+  width: 100%;
+}
+
+.pets-card :deep(.el-empty) {
+  width: 100%;
 }
 
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.card-header span {
+  font-size: 15px;
+  font-weight: 700;
+  color: #2d3748;
 }
 
 .dialog-footer {
@@ -437,9 +461,10 @@ export default {
 .avatar-preview {
   width: 80px;
   height: 80px;
-  border-radius: 6px;
+  border-radius: 8px;
   overflow: hidden;
-  border: 1px solid #dcdfe6;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .avatar-image {
@@ -449,39 +474,40 @@ export default {
 }
 
 .avatar-uploader-icon-button {
-  width: 40px;
-  height: 40px;
-  border: 1px solid #dcdfe6;
-  border-radius: 6px;
+  width: 44px;
+  height: 44px;
+  border: 2px dashed #cbd5e0;
+  border-radius: 8px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: var(--el-transition-duration-fast);
-  background-color: #f5f7fa;
+  transition: all 0.3s ease;
+  background: #f7fafc;
 }
 
 .avatar-uploader-icon-button:hover {
-  border-color: #409EFF;
-  color: #409EFF;
+  border-color: #3182ce;
+  background: #edf2f7;
 }
 
 .avatar-uploader-icon-button i {
-  font-size: 20px;
-  color: #909399;
+  font-size: 22px;
+  color: #a0aec0;
 }
 
 .avatar-uploader-icon-button:hover i {
-  color: #409EFF;
+  color: #3182ce;
 }
 
 .avatar-detail-container {
   width: 100px;
   height: 100px;
-  border-radius: 6px;
+  border-radius: 8px;
   overflow: hidden;
   margin: 10px 0;
-  border: 1px solid #dcdfe6;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .avatar-detail {
@@ -496,7 +522,7 @@ export default {
   border-radius: 50%;
   overflow: hidden;
   margin: auto;
-  border: 1px solid #dcdfe6;
+  border: 1px solid #e2e8f0;
 }
 
 .table-avatar {
@@ -513,12 +539,19 @@ export default {
   align-items: center;
   justify-content: center;
   margin: auto;
-  background-color: #f5f7fa;
-  border: 1px solid #dcdfe6;
-  color: #909399;
+  background: #f7fafc;
+  border: 1px solid #e2e8f0;
+  color: #a0aec0;
 }
 
 .table-avatar-placeholder i {
-  font-size: 20px;
+  font-size: 24px;
+}
+
+.operation-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: nowrap;
 }
 </style>

@@ -13,6 +13,7 @@ public class Director {
     private String realName;
     private String phone;
     private String email;
+    private String avatar;
 
     // Getters and Setters
     public Long getId() {
@@ -61,5 +62,13 @@ public class Director {
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public String getAvatar() {
+        return avatar;
+    }
+
+    public void setAvatar(String avatar) {
+        this.avatar = avatar;
     }
 }

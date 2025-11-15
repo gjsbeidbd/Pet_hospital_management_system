@@ -31,4 +31,14 @@ public interface DoctorScheduleMapper extends BaseMapper<DoctorSchedule> {
     List<DoctorSchedule> findByDoctorIdAndDateRange(@Param("doctorId") Long doctorId, 
                                                    @Param("startDate") LocalDate startDate, 
                                                    @Param("endDate") LocalDate endDate);
+    
+    /**
+     * 根据日期范围查询排班信息
+     * @param startDate 开始日期
+     * @param endDate 结束日期
+     * @return 排班列表
+     */
+    @Select("SELECT * FROM doctor_schedules WHERE schedule_date BETWEEN #{startDate} AND #{endDate} ORDER BY schedule_date ASC")
+    List<DoctorSchedule> findByDateRange(@Param("startDate") LocalDate startDate, 
+                                        @Param("endDate") LocalDate endDate);
 }

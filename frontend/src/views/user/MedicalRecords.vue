@@ -1,5 +1,5 @@
 <template>
-  <div class="medical-records-container">
+  <div class="medical-records-page">
     <el-card class="medical-records-card">
       <template #header>
         <div class="card-header">
@@ -9,19 +9,21 @@
       
       <!-- 病例列表 -->
       <el-table :data="medicalRecords" style="width: 100%" v-loading="loading">
-        <el-table-column prop="id" label="病例ID" width="80"></el-table-column>
-        <el-table-column prop="petName" label="宠物名称" width="120"></el-table-column>
-        <el-table-column prop="doctorName" label="医生" width="120"></el-table-column>
-        <el-table-column prop="visitDate" label="就诊日期" width="180">
+        <el-table-column prop="id" label="病例ID" align="center"></el-table-column>
+        <el-table-column prop="petName" label="宠物名称" align="center"></el-table-column>
+        <el-table-column prop="doctorName" label="医生" align="center"></el-table-column>
+        <el-table-column prop="visitDate" label="就诊日期" align="center">
           <template #default="scope">
             {{ formatDate(scope.row.visitDate) }}
           </template>
         </el-table-column>
-        <el-table-column prop="symptoms" label="症状" show-overflow-tooltip></el-table-column>
-        <el-table-column prop="diagnosis" label="诊断结果" show-overflow-tooltip></el-table-column>
-        <el-table-column label="操作" width="120">
+        <el-table-column prop="symptoms" label="症状" show-overflow-tooltip align="center"></el-table-column>
+        <el-table-column prop="diagnosis" label="诊断结果" show-overflow-tooltip align="center"></el-table-column>
+        <el-table-column label="操作" align="center">
           <template #default="scope">
-            <el-button size="small" @click="viewDetail(scope.row)">查看详情</el-button>
+            <div class="operation-buttons">
+              <el-button size="small" @click="viewDetail(scope.row)">查看详情</el-button>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -29,6 +31,7 @@
       <!-- 无病例提示 -->
       <el-empty description="暂无病例记录" v-if="medicalRecords.length === 0 && !loading"></el-empty>
     </el-card>
+    </div>
     
     <!-- 病例详情对话框 -->
     <el-dialog title="病例详情" v-model="detailDialogVisible" width="700px">
@@ -82,7 +85,6 @@
         </span>
       </template>
     </el-dialog>
-  </div>
 </template>
 
 <script>
@@ -110,7 +112,7 @@ export default {
         if (userId) {
           // 先获取用户的所有宠物
           const petsResponse = await api.get(`/api/users/${userId}/pets`);
-          const pets = petsResponse.data;
+          const pets = petsResponse.data.success ? petsResponse.data.data : petsResponse.data;
           
           // 获取每个宠物的病例记录
           const allRecords = [];
@@ -119,7 +121,8 @@ export default {
               const recordsResponse = await api.get(`/api/medical-records/pet/${pet.id}`);
               const records = recordsResponse.data.map(record => ({
                 ...record,
-                petName: pet.name
+                petName: pet.name,
+                visitDate: record.createdAt // 使用createdAt作为就诊日期
               }));
               allRecords.push(...records);
             } catch (error) {
@@ -129,7 +132,7 @@ export default {
           
           // 按就诊日期倒序排列
           this.medicalRecords = allRecords.sort((a, b) => 
-            new Date(b.visitDate) - new Date(a.visitDate)
+            new Date(b.visitDate || b.createdAt) - new Date(a.visitDate || a.createdAt)
           );
         }
       } catch (error) {
@@ -163,12 +166,31 @@ export default {
 </script>
 
 <style scoped>
-.medical-records-container {
-  padding: 20px;
+.medical-records-page {
+  width: 100%;
+  height: 100%;
 }
 
 .medical-records-card {
-  margin-bottom: 20px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.medical-records-card :deep(.el-card__body) {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+}
+
+.medical-records-card :deep(.el-table) {
+  width: 100%;
+}
+
+.medical-records-card :deep(.el-empty) {
+  width: 100%;
 }
 
 .card-header {
@@ -179,5 +201,12 @@ export default {
 
 .dialog-footer {
   text-align: right;
+}
+
+.operation-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: nowrap;
 }
 </style>

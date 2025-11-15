@@ -27,4 +27,9 @@ public class DoctorScheduleServiceImpl extends ServiceImpl<DoctorScheduleMapper,
     public List<DoctorSchedule> getScheduleByDoctorIdAndDateRange(Long doctorId, LocalDate startDate, LocalDate endDate) {
         return doctorScheduleMapper.findByDoctorIdAndDateRange(doctorId, startDate, endDate);
     }
+    
+    @Override
+    public List<DoctorSchedule> getScheduleByDateRange(LocalDate startDate, LocalDate endDate) {
+        return doctorScheduleMapper.findByDateRange(startDate, endDate);
+    }
 }

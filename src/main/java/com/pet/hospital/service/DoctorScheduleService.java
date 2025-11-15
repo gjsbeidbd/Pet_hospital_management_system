@@ -1,11 +1,12 @@
 package com.pet.hospital.service;
 
+import com.baomidou.mybatisplus.extension.service.IService;
 import com.pet.hospital.entity.DoctorSchedule;
 
 import java.time.LocalDate;
 import java.util.List;
 
-public interface DoctorScheduleService {
+public interface DoctorScheduleService extends IService<DoctorSchedule> {
     
     /**
      * 根据医生ID查询排班信息
@@ -22,4 +23,12 @@ public interface DoctorScheduleService {
      * @return 排班列表
      */
     List<DoctorSchedule> getScheduleByDoctorIdAndDateRange(Long doctorId, LocalDate startDate, LocalDate endDate);
+    
+    /**
+     * 根据日期范围查询排班信息
+     * @param startDate 开始日期
+     * @param endDate 结束日期
+     * @return 排班列表
+     */
+    List<DoctorSchedule> getScheduleByDateRange(LocalDate startDate, LocalDate endDate);
 }

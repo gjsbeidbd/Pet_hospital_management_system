@@ -35,21 +35,13 @@
               <i class="el-icon-user"></i>
               <span>客户管理</span>
             </el-menu-item>
-            <el-menu-item index="/director/pets">
-              <i class="el-icon-guide"></i>
-              <span>宠物管理</span>
-            </el-menu-item>
-            <el-menu-item index="/director/appointments">
+            <el-menu-item index="/director/schedules">
               <i class="el-icon-date"></i>
-              <span>预约管理</span>
+              <span>医生排班</span>
             </el-menu-item>
             <el-menu-item index="/director/medical-records">
               <i class="el-icon-document"></i>
               <span>病例管理</span>
-            </el-menu-item>
-            <el-menu-item index="/director/billing">
-              <i class="el-icon-money"></i>
-              <span>收费管理</span>
             </el-menu-item>
             <el-menu-item index="/director/inventory">
               <i class="el-icon-box"></i>

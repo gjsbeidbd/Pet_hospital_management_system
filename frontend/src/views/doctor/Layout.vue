@@ -32,16 +32,8 @@
               <span>我的排班</span>
             </el-menu-item>
             <el-menu-item index="/doctor/appointments">
-              <i class="el-icon-date"></i>
-              <span>预约列表</span>
-            </el-menu-item>
-            <el-menu-item index="/doctor/medical-records">
-              <i class="el-icon-document"></i>
-              <span>病例管理</span>
-            </el-menu-item>
-            <el-menu-item index="/doctor/prescriptions">
-              <i class="el-icon-notebook-2"></i>
-              <span>处方管理</span>
+              <i class="el-icon-user"></i>
+              <span>就诊管理</span>
             </el-menu-item>
           </el-menu>
         </el-aside>

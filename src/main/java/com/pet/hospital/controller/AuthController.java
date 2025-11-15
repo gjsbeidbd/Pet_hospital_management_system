@@ -104,6 +104,10 @@ public class AuthController {
             // 验证用户
             Map<String, Object> user = validateUser(username, password, role);
             if (user != null) {
+                // 检查是否是账户被停用的错误
+                if (user.containsKey("error") && "ACCOUNT_DISABLED".equals(user.get("error"))) {
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN).body(user.get("message"));
+                }
                 // 登录成功
                 System.out.println("Login successful, generating response");
                 Map<String, Object> response = new HashMap<>();
@@ -229,6 +233,14 @@ public class AuthController {
                     Receptionist receptionist = receptionistService.getOne(receptionistWrapper);
                     if (receptionist != null) {
                         System.out.println("Receptionist found: " + receptionist.getUsername() + ", Stored password: " + receptionist.getPassword() + ", Provided password: " + password);
+                        // 检查账户状态
+                        if (receptionist.getStatus() != null && receptionist.getStatus() == 0) {
+                            System.out.println("Receptionist account is disabled: " + username);
+                            Map<String, Object> result = new HashMap<>();
+                            result.put("error", "ACCOUNT_DISABLED");
+                            result.put("message", "该账户已被停用，请联系院长进行启用");
+                            return result;
+                        }
                         if (receptionist.getPassword().equals(password)) {
                             Map<String, Object> result = new HashMap<>();
                             result.put("id", receptionist.getId());
@@ -252,6 +264,14 @@ public class AuthController {
                     Doctor doctor = doctorService.getOne(doctorWrapper);
                     if (doctor != null) {
                         System.out.println("Doctor found: " + doctor.getUsername() + ", Stored password: " + doctor.getPassword() + ", Provided password: " + password);
+                        // 检查账户状态
+                        if (doctor.getStatus() != null && doctor.getStatus() == 0) {
+                            System.out.println("Doctor account is disabled: " + username);
+                            Map<String, Object> result = new HashMap<>();
+                            result.put("error", "ACCOUNT_DISABLED");
+                            result.put("message", "该账户已被停用，请联系院长进行启用");
+                            return result;
+                        }
                         if (doctor.getPassword().equals(password)) {
                             Map<String, Object> result = new HashMap<>();
                             result.put("id", doctor.getId());
@@ -435,3 +455,5 @@ public class AuthController {
         return false;
     }
 }
+
+

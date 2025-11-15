@@ -1,40 +1,43 @@
 <template>
-  <div class="appointments-container">
+  <div class="appointments-page">
     <el-card class="appointments-card">
       <template #header>
         <div class="card-header">
           <span>我的预约</span>
+          <el-button type="primary" @click="makeAppointment">新建预约</el-button>
         </div>
       </template>
       
       <!-- 预约列表 -->
       <el-table :data="appointments" style="width: 100%" v-loading="loading">
-        <el-table-column prop="id" label="预约ID" width="80"></el-table-column>
-        <el-table-column prop="petName" label="宠物名称" width="120"></el-table-column>
-        <el-table-column prop="doctorName" label="医生" width="120"></el-table-column>
-        <el-table-column prop="appointmentTime" label="预约时间" width="180">
+        <el-table-column prop="id" label="预约ID" align="center"></el-table-column>
+        <el-table-column prop="petName" label="宠物名称" align="center"></el-table-column>
+        <el-table-column prop="doctorName" label="医生" align="center"></el-table-column>
+        <el-table-column prop="appointmentTime" label="预约时间" align="center">
           <template #default="scope">
             {{ formatDate(scope.row.appointmentTime) }}
           </template>
         </el-table-column>
-        <el-table-column prop="status" label="状态" width="120">
+        <el-table-column prop="status" label="状态" align="center">
           <template #default="scope">
             <el-tag :type="getStatusType(scope.row.status)">
               {{ getStatusText(scope.row.status) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="150">
+        <el-table-column label="操作" align="center">
           <template #default="scope">
-            <el-button size="small" @click="viewDetail(scope.row)">查看详情</el-button>
-            <el-button 
-              size="small" 
-              type="danger" 
-              @click="cancelAppointment(scope.row)" 
-              :disabled="scope.row.status !== 'PENDING'"
-              v-if="scope.row.status === 'PENDING' || scope.row.status === 'CONFIRMED'">
-              取消预约
-            </el-button>
+            <div class="operation-buttons">
+              <el-button size="small" @click="viewDetail(scope.row)">查看详情</el-button>
+              <el-button 
+                size="small" 
+                type="danger" 
+                @click="cancelAppointment(scope.row)" 
+                :disabled="scope.row.status !== 'PENDING'"
+                v-if="scope.row.status === 'PENDING' || scope.row.status === 'CONFIRMED'">
+                取消预约
+              </el-button>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -42,6 +45,7 @@
       <!-- 无预约提示 -->
       <el-empty description="暂无预约记录" v-if="appointments.length === 0 && !loading"></el-empty>
     </el-card>
+    </div>
     
     <!-- 预约详情对话框 -->
     <el-dialog title="预约详情" v-model="detailDialogVisible" width="600px">
@@ -89,7 +93,6 @@
         </span>
       </template>
     </el-dialog>
-  </div>
 </template>
 
 <script>
@@ -117,11 +120,11 @@ export default {
         if (userId) {
           // 先获取用户的客户信息
           const customerResponse = await api.get(`/api/users/${userId}/customer`);
-          const customerId = customerResponse.data.id;
+          const customerId = customerResponse.data.success ? customerResponse.data.data.id : customerResponse.data.id;
           
           // 获取预约列表
           const response = await api.get(`/api/appointments/customer/${customerId}`);
-          const appointments = response.data;
+          const appointments = response.data.success ? response.data.data : response.data;
           
           // 获取宠物和医生信息
           const petMap = {};
@@ -129,7 +132,7 @@ export default {
           
           // 获取用户的所有宠物
           const petsResponse = await api.get(`/api/users/${userId}/pets`);
-          const pets = petsResponse.data;
+          const pets = petsResponse.data.success ? petsResponse.data.data : petsResponse.data;
           pets.forEach(pet => {
             petMap[pet.id] = pet.name;
           });
@@ -166,10 +169,8 @@ export default {
         type: 'warning'
       }).then(async () => {
         try {
-          // 这里应该调用取消预约的接口
-          // 由于目前没有提供取消预约的接口，我们暂时只显示提示
-          this.$message.info('预约取消功能将在后续版本中实现');
-          
+          await api.put(`/api/appointments/${appointment.id}/cancel`);
+          this.$message.success('预约取消成功');
           // 重新加载预约列表
           await this.loadAppointments();
         } catch (error) {
@@ -179,6 +180,11 @@ export default {
       }).catch(() => {
         // 用户取消操作
       });
+    },
+    
+    // 新建预约
+    makeAppointment() {
+      this.$router.push('/user/make-appointment');
     },
     
     // 格式化日期
@@ -197,9 +203,10 @@ export default {
     // 获取状态类型
     getStatusType(status) {
       const statusMap = {
-        'PENDING': 'info',
-        'CONFIRMED': 'warning',
-        'COMPLETED': 'success',
+        'PENDING': 'warning',
+        'CONFIRMED': 'primary',
+        'IN_PROGRESS': 'success',
+        'COMPLETED': 'info',
         'CANCELLED': 'danger'
       };
       return statusMap[status] || 'info';
@@ -208,9 +215,10 @@ export default {
     // 获取状态文本
     getStatusText(status) {
       const statusTextMap = {
-        'PENDING': '待确认',
-        'CONFIRMED': '已确认',
-        'COMPLETED': '已完成',
+        'PENDING': '待取号',
+        'CONFIRMED': '待就诊',
+        'IN_PROGRESS': '就诊中',
+        'COMPLETED': '已就诊',
         'CANCELLED': '已取消'
       };
       return statusTextMap[status] || status;
@@ -220,12 +228,31 @@ export default {
 </script>
 
 <style scoped>
-.appointments-container {
-  padding: 20px;
+.appointments-page {
+  width: 100%;
+  height: 100%;
 }
 
 .appointments-card {
-  margin-bottom: 20px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.appointments-card :deep(.el-card__body) {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+}
+
+.appointments-card :deep(.el-table) {
+  width: 100%;
+}
+
+.appointments-card :deep(.el-empty) {
+  width: 100%;
 }
 
 .card-header {
@@ -236,5 +263,12 @@ export default {
 
 .dialog-footer {
   text-align: right;
+}
+
+.operation-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: nowrap;
 }
 </style>

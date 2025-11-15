@@ -13,6 +13,13 @@ public class Doctor {
     private String realName;
     private String phone;
     private String email;
+    private String employeeId;
+    private String department;
+    private String title;
+    private String specialty;
+    private String description;
+    private String avatar;
+    private Integer status; // 0-离职 1-在职
 
     // Getters and Setters
     public Long getId() {
@@ -61,5 +68,61 @@ public class Doctor {
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public String getEmployeeId() {
+        return employeeId;
+    }
+
+    public void setEmployeeId(String employeeId) {
+        this.employeeId = employeeId;
+    }
+
+    public String getDepartment() {
+        return department;
+    }
+
+    public void setDepartment(String department) {
+        this.department = department;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    public String getSpecialty() {
+        return specialty;
+    }
+
+    public void setSpecialty(String specialty) {
+        this.specialty = specialty;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public String getAvatar() {
+        return avatar;
+    }
+
+    public void setAvatar(String avatar) {
+        this.avatar = avatar;
+    }
+
+    public Integer getStatus() {
+        return status;
+    }
+
+    public void setStatus(Integer status) {
+        this.status = status;
     }
 }

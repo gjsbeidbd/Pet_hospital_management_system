@@ -27,6 +27,10 @@
               <i class="el-icon-house"></i>
               <span>首页</span>
             </el-menu-item>
+            <el-menu-item index="/receptionist/queue">
+              <i class="el-icon-tickets"></i>
+              <span>取号排队</span>
+            </el-menu-item>
             <el-menu-item index="/receptionist/customers">
               <i class="el-icon-user"></i>
               <span>客户管理</span>

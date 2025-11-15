@@ -4,16 +4,28 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.pet.hospital.entity.User;
 import com.pet.hospital.entity.Pet;
 import com.pet.hospital.entity.Customer;
+import com.pet.hospital.entity.UserPet;
 import com.pet.hospital.service.UserService;
 import com.pet.hospital.service.PetService;
 import com.pet.hospital.service.CustomerService;
+import com.pet.hospital.service.UserPetService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.List;
@@ -32,6 +44,12 @@ public class UserController {
     @Autowired
     private CustomerService customerService;
     
+    @Autowired
+    private UserPetService userPetService;
+    
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+    
     // 从application.properties中读取数据库连接配置
     @Value("${spring.datasource.url}")
     private String DB_URL;
@@ -41,6 +59,97 @@ public class UserController {
     
     @Value("${spring.datasource.password}")
     private String DB_PASSWORD;
+    
+    @Value("${file.upload.avatar-dir}")
+    private String avatarUploadDir;
+    
+    /**
+     * 上传用户头像
+     * @param userId 用户ID
+     * @param file 头像文件
+     * @return 上传结果
+     */
+    @PostMapping("/upload-avatar/{userId}")
+    public ResponseEntity<?> uploadAvatar(@PathVariable Long userId, @RequestParam("file") MultipartFile file) {
+        try {
+            // 验证文件是否为空
+            if (file.isEmpty()) {
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", false);
+                response.put("message", "请选择要上传的文件");
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+            }
+            
+            // 验证文件类型
+            String contentType = file.getContentType();
+            if (contentType == null || !contentType.startsWith("image/")) {
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", false);
+                response.put("message", "请上传图片文件");
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+            }
+            
+            // 验证文件大小（2MB）
+            if (file.getSize() > 2 * 1024 * 1024) {
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", false);
+                response.put("message", "图片大小不能超过2MB");
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+            }
+            
+            // 获取原始文件名和扩展名
+            String originalFilename = file.getOriginalFilename();
+            String fileExtension = "";
+            if (originalFilename != null && originalFilename.contains(".")) {
+                fileExtension = originalFilename.substring(originalFilename.lastIndexOf("."));
+            }
+            
+            // 生成新文件名：user_{userId}_{timestamp}{extension}
+            String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+            String newFilename = "user_" + userId + "_" + timestamp + fileExtension;
+            
+            // 创建上传目录
+            File uploadDir = new File(avatarUploadDir);
+            if (!uploadDir.exists()) {
+                uploadDir.mkdirs();
+            }
+            
+            // 保存文件
+            Path filePath = Paths.get(avatarUploadDir + newFilename);
+            Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+            
+            // 生成访问 URL
+            String avatarUrl = "/" + avatarUploadDir + newFilename;
+            
+            // 更新数据库中的用户头像
+            User user = userService.getById(userId);
+            if (user != null) {
+                user.setAvatar(avatarUrl);
+                userService.updateById(user);
+                
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", true);
+                response.put("message", "头像上传成功");
+                response.put("data", avatarUrl);
+                return ResponseEntity.ok(response);
+            } else {
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", false);
+                response.put("message", "用户不存在");
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+            }
+        } catch (IOException e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "文件上传失败: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "上传头像失败: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
     
     /**
      * 删除账户请求数据结构
@@ -186,6 +295,40 @@ public class UserController {
     }
     
     /**
+     * 重置密码（前台专用，不需要验证旧密码）
+     * @param userId 用户ID
+     * @param request 包含新密码的请求体
+     * @return 重置结果
+     */
+    @PostMapping("/reset-password/{userId}")
+    public ResponseEntity<?> resetPassword(@PathVariable Long userId, @RequestBody Map<String, String> request) {
+        try {
+            String newPassword = request.get("newPassword");
+            
+            if (newPassword == null || newPassword.trim().isEmpty()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("新密码不能为空");
+            }
+            
+            // 获取用户
+            User user = userService.getById(userId);
+            if (user != null) {
+                // 直接更新密码
+                user.setPassword(newPassword);
+                boolean update = userService.updateById(user);
+                if (update) {
+                    return ResponseEntity.ok("密码重置成功");
+                } else {
+                    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("密码重置失败");
+                }
+            } else {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("用户不存在");
+            }
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("重置密码失败: " + e.getMessage());
+        }
+    }
+    
+    /**
      * 获取用户的宠物列表
      * @param userId 用户ID
      * @return 宠物列表
@@ -219,9 +362,16 @@ public class UserController {
             QueryWrapper<Pet> petQueryWrapper = new QueryWrapper<>();
             petQueryWrapper.eq("customer_id", customer.getId());
             List<Pet> pets = petService.list(petQueryWrapper);
-            return ResponseEntity.ok(pets);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("data", pets);
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("获取宠物列表失败: " + e.getMessage());
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "获取宠物列表失败: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }
     
@@ -255,9 +405,15 @@ public class UserController {
                 customerService.save(customer);
             }
             
-            return ResponseEntity.ok(customer);
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("data", customer);
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("获取客户信息失败: " + e.getMessage());
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "获取客户信息失败: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }
     
@@ -278,12 +434,138 @@ public class UserController {
             // 添加宠物
             boolean save = petService.save(pet);
             if (save) {
+                // 同时在user_pets表中创建用户和宠物的关联记录
+                // 首先根据customerId查找对应的userId
+                if (customer.getUserId() != null) {
+                    UserPet userPet = new UserPet(customer.getUserId(), pet.getId());
+                    boolean userPetSaved = userPetService.save(userPet);
+                    if (!userPetSaved) {
+                        // 如果关联记录保存失败，记录日志但不中断主流程
+                        System.err.println("警告：无法创建用户和宠物的关联记录");
+                    }
+                }
                 return ResponseEntity.ok("宠物信息添加成功");
             } else {
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("宠物信息添加失败");
             }
         } catch (Exception e) {
+            e.printStackTrace(); // 打印异常堆栈以便调试
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("添加宠物失败: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * 获取所有用户列表
+     * @return 用户列表
+     */
+    @GetMapping
+    public ResponseEntity<?> getAllUsers() {
+        try {
+            List<User> users = userService.list();
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("data", users);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "获取用户列表失败: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+    
+    /**
+     * 创建新用户
+     * @param user 用户信息
+     * @return 创建结果
+     */
+    @PostMapping
+    public ResponseEntity<?> createUser(@RequestBody User user) {
+        try {
+            // 检查用户名是否已存在
+            QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+            queryWrapper.eq("username", user.getUsername());
+            User existingUser = userService.getOne(queryWrapper);
+            
+            if (existingUser != null) {
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", false);
+                response.put("message", "用户名已存在");
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+            }
+            
+            // 保存用户
+            boolean save = userService.save(user);
+            if (save) {
+                // 同时创建对应的customer记录
+                Customer customer = new Customer();
+                customer.setUserId(user.getId());
+                customer.setRealName(user.getRealName());
+                customer.setPhone(user.getPhone());
+                customer.setEmail(user.getEmail());
+                customer.setAddress(user.getAddress());
+                customerService.save(customer);
+                
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", true);
+                response.put("message", "用户创建成功");
+                response.put("data", user);
+                return ResponseEntity.ok(response);
+            } else {
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", false);
+                response.put("message", "用户创建失败");
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+            }
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "创建用户失败: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+    
+    /**
+     * 根据ID获取用户信息
+     * @param userId 用户ID
+     * @return 用户信息
+     */
+    @GetMapping("/{userId}")
+    public ResponseEntity<?> getUserById(@PathVariable Long userId) {
+        try {
+            User user = userService.getById(userId);
+            if (user != null) {
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", true);
+                response.put("data", user);
+                return ResponseEntity.ok(response);
+            } else {
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", false);
+                response.put("message", "用户不存在");
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+            }
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "获取用户信息失败: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+    
+    /**
+     * 获取用户关联的宠物列表（通过user_pets关联表）
+     * @return 宠物列表
+     */
+    @GetMapping("/pets")
+    public ResponseEntity<?> getUserPetsWithAssociations() {
+        try {
+            // 使用MyBatis Plus联表查询获取用户和宠物的关联数据
+            List<Map<String, Object>> petsWithOwners = petService.getUserPetsWithOwners();
+            return ResponseEntity.ok(petsWithOwners);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("获取宠物列表失败: " + e.getMessage());
         }
     }
     
@@ -324,6 +606,25 @@ public class UserController {
             }
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("删除宠物信息失败: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * 根据ID获取宠物信息
+     * @param petId 宠物ID
+     * @return 宠物信息
+     */
+    @GetMapping("/pet/{petId}")
+    public ResponseEntity<?> getPetById(@PathVariable Long petId) {
+        try {
+            Pet pet = petService.getById(petId);
+            if (pet != null) {
+                return ResponseEntity.ok(pet);
+            } else {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("宠物不存在");
+            }
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("获取宠物信息失败: " + e.getMessage());
         }
     }
 }

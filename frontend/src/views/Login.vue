@@ -178,7 +178,12 @@ export default {
             
             this.$message.success('登录成功');
           } catch (error) {
-            this.$message.error('登录失败: ' + (error.response?.data || '未知错误'));
+            // 检查是否是403错误（账户被停用）
+            if (error.response?.status === 403) {
+              this.$message.error(error.response.data);
+            } else {
+              this.$message.error('登录失败: ' + (error.response?.data || '未知错误'));
+            }
           } finally {
             this.loginLoading = false;
           }
